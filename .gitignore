@@ -54,3 +54,6 @@ thumbs.db
 apps/next/.env
 apps/expo/.env
 apps/expo/.env.production
+
+# local git backup folders created during cleanup
+.git_backup*/
