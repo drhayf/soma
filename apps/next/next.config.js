@@ -1,0 +1,78 @@
+/** @type {import('next').NextConfig} */
+const { withTamagui } = require('@tamagui/next-plugin')
+const { join } = require('node:path')
+
+const boolVals = {
+  true: true,
+  false: false,
+}
+
+const disableExtraction =
+  boolVals[process.env.DISABLE_EXTRACTION] ?? process.env.NODE_ENV === 'development'
+
+const plugins = [
+  withTamagui({
+    config: '../../packages/config/src/tamagui.config.ts',
+    components: ['tamagui', '@my/ui'],
+    appDir: true,
+    importsWhitelist: ['constants.js', 'colors.js'],
+    outputCSS: process.env.NODE_ENV === 'production' ? './public/tamagui.css' : null,
+    logTimings: true,
+    disableExtraction,
+    shouldExtract: (path) => {
+      if (path.includes(join('packages', 'app'))) {
+        return true
+      }
+      return false
+    },
+    disableThemesBundleOptimize: true,
+    excludeReactNativeWebExports: ['Switch', 'ProgressBar', 'Picker', 'CheckBox', 'Touchable'],
+  }),
+]
+
+module.exports = () => {
+  /** @type {import('next').NextConfig} */
+  let config = {
+    typescript: {
+      ignoreBuildErrors: true,
+    },
+    transpilePackages: [
+      'solito',
+      'react-native-web',
+      'expo-linking',
+      'expo-constants',
+      'expo-modules-core',
+    ],
+    experimental: {
+      scrollRestoration: true,
+    },
+    webpack: (config) => {
+      // Ignore expo-modules-core and other React Native packages on web
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        'react-native': 'react-native-web',
+      }
+
+      // Fallback for missing modules
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        'expo-modules-core': false,
+        'expo-constants': false,
+      }
+
+      // Suppress warnings about missing Expo modules
+      config.ignoreWarnings = [{ module: /expo-modules-core/ }, { module: /expo-constants/ }]
+
+      return config
+    },
+  }
+
+  for (const plugin of plugins) {
+    config = {
+      ...config,
+      ...plugin(config),
+    }
+  }
+
+  return config
+}

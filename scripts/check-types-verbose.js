@@ -1,0 +1,148 @@
+/**
+ * TypeScript Type Checker - Show All Errors with Annotations
+ * Runs tsc and annotates which errors are expected React 19 warnings
+ */
+
+const { execSync } = require('child_process')
+const path = require('path')
+
+// Expected error patterns (React 19 type warnings)
+const EXPECTED_PATTERNS = [
+  /cannot be used as a JSX component/i,
+  /Its type .* is not a valid JSX element type/i,
+  /Type .* is not assignable to type .* ReactNode/i,
+  /Property 'children' is missing in type 'ReactElement'/i,
+  /but required in type 'ReactPortal'/i,
+  /TamaguiComponent.*is not a valid JSX element type/i,
+  /ForwardRefExoticComponent.*is not a valid JSX element type/i,
+]
+
+const colors = {
+  reset: '\x1b[0m',
+  red: '\x1b[31m',
+  green: '\x1b[32m',
+  yellow: '\x1b[33m',
+  cyan: '\x1b[36m',
+  gray: '\x1b[90m',
+  dim: '\x1b[2m',
+}
+
+function isExpectedError(line) {
+  return EXPECTED_PATTERNS.some((pattern) => pattern.test(line))
+}
+
+function annotateOutput(output) {
+  const lines = output.split('\n')
+  const annotated = []
+  let currentError = []
+  let isExpected = false
+  let expectedCount = 0
+  let actualCount = 0
+
+  for (const line of lines) {
+    // Detect start of new error - matches both absolute and relative paths
+    // Examples: "C:\path\file.ts(123,45):" or "../../packages/app/file.tsx(123,45):"
+    if (line.match(/\(\d+,\d+\):\s*error\s+TS\d+:/)) {
+      // Process previous error
+      if (currentError.length > 0) {
+        if (isExpected) {
+          annotated.push(
+            `${colors.dim}${currentError[0]} ${colors.yellow}[EXPECTED]${colors.reset}`
+          )
+          annotated.push(...currentError.slice(1).map((l) => `${colors.dim}${l}${colors.reset}`))
+          expectedCount++
+        } else {
+          annotated.push(...currentError)
+          actualCount++
+        }
+        annotated.push('') // blank line between errors
+      }
+
+      // Start new error
+      currentError = [line]
+      isExpected = false
+    } else if (currentError.length > 0) {
+      currentError.push(line)
+      if (isExpectedError(line)) {
+        isExpected = true
+      }
+    } else {
+      annotated.push(line)
+    }
+  }
+
+  // Process last error
+  if (currentError.length > 0) {
+    if (isExpected) {
+      annotated.push(`${colors.dim}${currentError[0]} ${colors.yellow}[EXPECTED]${colors.reset}`)
+      annotated.push(...currentError.slice(1).map((l) => `${colors.dim}${l}${colors.reset}`))
+      expectedCount++
+    } else {
+      annotated.push(...currentError)
+      actualCount++
+    }
+  }
+
+  return {
+    output: annotated.join('\n'),
+    expectedCount,
+    actualCount,
+  }
+}
+
+function main() {
+  console.log(`${colors.cyan}🔍 Running TypeScript type checker (verbose mode)...${colors.reset}\n`)
+
+  const workspaces = [
+    { name: 'packages/app', cwd: path.resolve(__dirname, '../packages/app') },
+    { name: 'apps/next', cwd: path.resolve(__dirname, '../apps/next') },
+  ]
+
+  let totalExpected = 0
+  let totalActual = 0
+
+  for (const workspace of workspaces) {
+    console.log(`${colors.cyan}=== ${workspace.name} ===${colors.reset}\n`)
+
+    try {
+      execSync('tsc --noEmit --pretty false', { cwd: workspace.cwd, stdio: 'pipe' })
+      console.log(`${colors.green}✓ No errors${colors.reset}\n`)
+    } catch (error) {
+      const output = error.stdout ? error.stdout.toString() : error.stderr.toString()
+
+      if (output && output.trim()) {
+        const { output: annotatedOutput, expectedCount, actualCount } = annotateOutput(output)
+
+        totalExpected += expectedCount
+        totalActual += actualCount
+
+        console.log(annotatedOutput)
+        console.log(
+          `\n${colors.yellow}Expected: ${expectedCount}${colors.reset} | ${actualCount > 0 ? colors.red : colors.green}Actual: ${actualCount}${colors.reset}\n`
+        )
+      }
+    }
+  }
+
+  // Final summary
+  console.log(`${colors.cyan}${'='.repeat(60)}${colors.reset}`)
+  console.log(`${colors.yellow}📊 Total Summary:${colors.reset}`)
+  console.log(
+    `   ${colors.gray}Expected React 19 warnings:${colors.reset} ${colors.yellow}${totalExpected}${colors.reset}`
+  )
+  console.log(
+    `   ${colors.gray}Actual TypeScript errors:${colors.reset} ${totalActual > 0 ? colors.red : colors.green}${totalActual}${colors.reset}`
+  )
+
+  if (totalActual > 0) {
+    console.log(
+      `\n${colors.red}❌ Please fix the ${totalActual} actual error(s) above${colors.reset}`
+    )
+    process.exit(1)
+  } else {
+    console.log(`\n${colors.green}✓ All errors are expected React 19 warnings${colors.reset}`)
+    process.exit(0)
+  }
+}
+
+main()

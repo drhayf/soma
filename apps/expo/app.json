@@ -1,0 +1,62 @@
+{
+  "expo": {
+    "name": "Somatic Alignment Guide",
+    "slug": "somatic-alignment",
+    "scheme": "somaticalignment",
+    "owner": "dRof",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "updates": {
+      "fallbackToCacheTimeout": 0,
+      "url": "https://u.expo.dev/your-project-id"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.drof.somaticalignment",
+      "infoPlist": {
+        "UIBackgroundModes": ["fetch"]
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FFFFFF"
+      },
+      "package": "com.drof.somaticalignment"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      [
+        "react-native-health",
+        {
+          "healthSharePermission": "Allow Somatic Alignment to read your health data including steps, sleep, and walking metrics to provide personalized somatic guidance.",
+          "healthUpdatePermission": "Allow Somatic Alignment to save mindfulness and workout sessions to your Health app.",
+          "isClinicalDataEnabled": false
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "configure-this-with-eas-build-configure"
+      }
+    }
+  }
+}
